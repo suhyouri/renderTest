@@ -1,9 +1,11 @@
-const PORT = 8000;
+const PORT = process.env.PORT || 8000;
 const HOST = "localhost";
+const url = "http://render-test-sooty.vercel.app/";
 
 //---> left page
 const getDataFromBackend_1 = async () => {
-  const rest = await fetch(`http://${HOST}:${PORT}/leftpage`);
+  // const rest = await fetch(`http://${HOST}:${PORT}/api/leftpage`);
+  const rest = await fetch(`${url}/api/leftpage`);
   const data = await rest.json();
   console.log(data);
   return data;
@@ -31,7 +33,7 @@ addDataLeft();
 
 //---right page
 const getDataFromBackend_2 = async () => {
-  const rest = await fetch(`http://${HOST}:${PORT}/rightpage`);
+  const rest = await fetch(`${url}/api/rightpage`);
   const data = await rest.json();
   console.log(data);
   return data;

@@ -5,7 +5,7 @@ let logging_2 = [];
 
 function submitFormToNotion_right(newAnsobj) {
 //   console.log("i will make", newAnsobj);
-  fetch(`${url}}/api/submitFormToNotion_right`, {
+  fetch(`${url}/api/submitFormToNotion_right`, {
     method: "post",
     headers: {
       Accept: "application/json",

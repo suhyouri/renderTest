@@ -5,17 +5,6 @@ const databaseId = process.env.NOTION_API_DATABASE;
 const databaseId_2 = process.env.NOTION_API_DATABASE_2;
 
 module.exports = {
-  // test code
-  // getDatabase: async () => {
-  //   const response = await notion.databases.query({ database_id: databaseId });
-  //   return response.results.map((page) => {
-  //     return {
-  //       name: page.properties.Name.title[0]?.plain_text,
-  //       phone: page.properties.PhoneNumber.rich_text[0]?.plain_text,
-  //       url: page.properties.ExtraInfo.rich_text[0]?.plain_text,
-  //     };
-  //   });
-  // },
   getDatabase_1: async () => {
     const response = await notion.databases.query({ database_id: databaseId });
     return response.results.map((page) => {

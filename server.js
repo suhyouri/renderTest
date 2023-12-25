@@ -1,8 +1,9 @@
 //env. database
 const databaseId = process.env.NOTION_API_DATABASE;
 const databaseId_2 = process.env.NOTION_API_DATABASE_2;
-const PORT = 8000;
+const PORT = process.env.PORT || 8000;
 const HOST = "localhost"; // here!!!!
+const url = "http://render-test-sooty.vercel.app/";
 
 const { getDatabase_1 } = require("./notion");
 const { getDatabase_2 } = require("./notion");
@@ -31,12 +32,12 @@ app.use(cors());
 app.use(express.static("public"));
 
 // ---> 1. Query a database
-app.get("/leftpage", async (req, res) => {
+app.get("/api/leftpage", async (req, res) => {
   const leftanswers = await getDatabase_1();
   res.json(leftanswers);
 });
 
-app.get("/rightpage", async (req, res) => {
+app.get("/api/rightpage", async (req, res) => {
   const rightanswers = await getDatabase_2();
   res.json(rightanswers);
 });
@@ -66,7 +67,7 @@ server.listen(PORT, HOST, () => {
 });
 
 // ---> 2. Create a page
-app.post("/submitFormToNotion_left", jsonParser, async (req, res) => {
+app.post("/api/submitFormToNotion_left", jsonParser, async (req, res) => {
   const nickname = req.body.Nickname;
   const content = req.body.Content;
 
@@ -101,7 +102,7 @@ app.post("/submitFormToNotion_left", jsonParser, async (req, res) => {
   }
 });
 
-app.post("/submitFormToNotion_right", jsonParser, async (req, res) => {
+app.post("/api/submitFormToNotion_right", jsonParser, async (req, res) => {
   const nickname = req.body.Nickname;
   const content = req.body.Content;
 

@@ -5,7 +5,7 @@ let logging_2 = [];
 
 function submitFormToNotion_right(newAnsobj) {
 //   console.log("i will make", newAnsobj);
-  fetch(`http://${HOST}:${PORT}/submitFormToNotion_right`, {
+  fetch(`http://${HOST}:${PORT}/api/submitFormToNotion_right`, {
     method: "post",
     headers: {
       Accept: "application/json",
@@ -24,21 +24,6 @@ function submitFormToNotion_right(newAnsobj) {
       console.log("Error: " + err);
     });
 }
-
-// function makeContainer_right(newAns) {
-//     // console.log("i will make", newAns);
-//     const section = document.createElement("section");
-//     section.classList.add("post");
-//     section.innerHTML = `
-//           <div class="answer">
-//             <li>${newAns.answer}</li>
-//           </div>
-//           <footer class="footer">
-//             <span class="post__author">${newAns.nickname}</span>
-//           </footer>
-//     `;
-//     answerbox_right.appendChild(section);
-// }
 
 function handleTodoSubmit_right(e) {
   e.preventDefault();

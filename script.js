@@ -1,65 +1,91 @@
-const { scriptUrl, refreshInterval } = window.APP_CONFIG;
-const sides = ['left', 'right'];
-const busy = new Set();
-function status(side, message) {
-  document.getElementById(`status-${side}`).textContent = message;
-}
-async function request(params, post = false) {
-  if (!scriptUrl && !post) {
-    const sheet = params.side === 'left' ? 'WMLAlive' : 'WMLNAlive';
-    const url = 'https://docs.google.com/spreadsheets/d/1JUW88_DGfv9QLWs2pH_IybOZrIbq_mUFBV7cN9I6okg/gviz/tq?tqx=out:json&headers=1&sheet=' + sheet;
-    const response = await fetch(url);
-    if (!response.ok) throw new Error('답변을 불러오지 못했습니다.');
-    const text = await response.text();
-    const result = JSON.parse(text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1));
-    if (result.status === 'error') throw new Error('시트 데이터를 확인해주세요.');
-    const headers = result.table.cols.map(col => col.label.trim().toLowerCase());
-    const name = headers.indexOf('nickname'), content = headers.indexOf('content');
-    if (name < 0 || content < 0) throw new Error('시트 열 이름을 확인해주세요.');
-    return {success:true, data:result.table.rows.map(row => ({nickname:String(row.c[name]?.v ?? ''), answer:String(row.c[content]?.v ?? '')})).filter(row => row.answer.trim())};
-  }
-  if (!scriptUrl) throw new Error('답변 저장 연결을 준비 중입니다. 잠시 후 다시 시도해주세요.');
-  const body = new URLSearchParams(params);
-  const response = await fetch(post ? scriptUrl : `${scriptUrl}?${body}`, post ? {method:'POST', body, redirect:'follow'} : {});
-  if (!response.ok) throw new Error('서버 연결에 실패했습니다. 다시 시도해주세요.');
-  const result = await response.json();
-  if (!result.success) throw new Error(result.error || '요청에 실패했습니다.');
-  return result;
-}
-async function load(side) {
-  const result = await request({action:'getAnswers', side});
-  const box = document.getElementById(`answerbox_${side}`);
+import { createApi } from './api.js';
+
+const api = createApi(window.APP_CONFIG.scriptUrl);
+
+function renderAnswers(container, answers) {
   const fragment = document.createDocumentFragment();
-  for (const value of result.data) {
-    const section = document.createElement('section'); section.className = 'post';
-    const answer = document.createElement('div'); answer.className = 'answer';
-    const text = document.createElement('p'); text.textContent = value.answer; answer.append(text);
-    const footer = document.createElement('footer'); footer.className = 'footer';
-    const author = document.createElement('span'); author.className = 'post__author'; author.textContent = value.nickname;
-    footer.append(author); section.append(answer, footer); fragment.append(section);
+  for (const { answer, nickname } of answers) {
+    const post = document.createElement('section');
+    post.className = 'post';
+    const content = document.createElement('div');
+    content.className = 'answer';
+    const text = document.createElement('p');
+    text.textContent = answer;
+    content.append(text);
+
+    const footer = document.createElement('footer');
+    footer.className = 'footer';
+    const author = document.createElement('span');
+    author.className = 'post__author';
+    author.textContent = nickname;
+    footer.append(author);
+    post.append(content, footer);
+    fragment.append(post);
   }
-  box.replaceChildren(fragment);
+  container.replaceChildren(fragment);
 }
-for (const [i, side] of sides.entries()) {
+
+function setupPanel(side) {
   const form = document.getElementById(`answer-form-${side}`);
-  const nickname = document.getElementById(`nickname_${i + 1}`);
-  const answer = document.getElementById(`content_${i + 1}`);
+  const container = document.getElementById(`answerbox_${side}`);
+  const status = document.getElementById(`status-${side}`);
+  const button = form.querySelector('button');
+  let saving = false;
+  let loading;
   let pending;
+
+  // Share overlapping reads so an older response cannot overwrite a newer one.
+  function load() {
+    if (!loading) {
+      loading = api.getAnswers(side)
+        .then(answers => renderAnswers(container, answers))
+        .finally(() => { loading = null; });
+    }
+    return loading;
+  }
+
   form.addEventListener('submit', async event => {
-    event.preventDefault(); if (busy.has(side)) return;
-    if (!nickname.value.trim() || !answer.value.trim()) { status(side, '닉네임과 답변을 입력해주세요.'); return; }
-    const values = {nickname:nickname.value.trim(), answer:answer.value.trim()};
-    if (!pending || pending.nickname !== values.nickname || pending.answer !== values.answer) pending = {...values, requestId:crypto.randomUUID()};
-    busy.add(side); form.querySelector('button').disabled = true; status(side, '저장 중…');
+    event.preventDefault();
+    if (saving) return;
+    const nickname = form.elements.nickname.value.trim();
+    const answer = form.elements.answer.value.trim();
+    if (!nickname || !answer) {
+      status.textContent = '닉네임과 답변을 입력해주세요.';
+      return;
+    }
+    // Keep the same ID on retry if the previous response was lost.
+    if (!pending || pending.nickname !== nickname || pending.answer !== answer) {
+      pending = { nickname, answer, requestId: crypto.randomUUID() };
+    }
+    saving = true;
+    button.disabled = true;
+    status.textContent = '저장 중…';
     try {
-      await request({action:'addAnswer', side, ...pending, hp_email:form.elements.hp_email.value}, true);
-      pending = null; form.reset(); status(side, '저장했습니다.');
-      try { await load(side); } catch { status(side, '저장했습니다. 목록은 잠시 후 갱신됩니다.'); }
-    } catch (error) { status(side, error.message); }
-    finally {busy.delete(side); form.querySelector('button').disabled = false;}
+      await api.addAnswer(side, { ...pending, hp_email: form.elements.hp_email.value });
+      pending = null;
+      form.reset();
+      status.textContent = '저장했습니다.';
+      try {
+        if (loading) await loading.catch(() => {});
+        await load();
+      } catch {
+        status.textContent = '저장했습니다. 목록은 잠시 후 갱신됩니다.';
+      }
+    } catch (error) {
+      status.textContent = error.name === 'TimeoutError'
+        ? '응답이 지연되고 있습니다. 다시 시도해주세요.'
+        : error.message;
+    } finally {
+      saving = false;
+      button.disabled = false;
+    }
   });
-  load(side).catch(error => status(side, error.message));
+
+  load().catch(error => { status.textContent = error.message; });
+  return () => { if (!saving) load().catch(() => {}); };
 }
+
+const refreshPanels = ['left', 'right'].map(setupPanel);
 setInterval(() => {
-  if (!document.hidden) for (const side of sides) if (!busy.has(side)) load(side).catch(() => {});
-}, refreshInterval);
+  if (!document.hidden) refreshPanels.forEach(refresh => refresh());
+}, window.APP_CONFIG.refreshInterval);

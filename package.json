@@ -1,24 +1,13 @@
 {
-  "name": "notion-app",
+  "name": "wmlalive-archive",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "private": true,
+  "type": "module",
+  "description": "Google Sheets 기반 WMLAlive 답변 아카이브",
   "scripts": {
-    "tailwind:css": "postcss public/styles/tailwind.css -o public/styles/style.css",
-    "start": "nodemon server.js"
+    "start": "python3 -m http.server 8000 --directory public",
+    "test": "node --test tests/*.test.js tests/apps-script.cjs",
+    "deploy": "node scripts/deploy.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "dependencies": {
-    "@notionhq/client": "^0.3.1",
-    "dotenv": "^10.0.0",
-    "express": "^4.17.1",
-    "http": "^0.0.1-security",
-    "nodemon": "^2.0.20",
-    "postcss-cli": "^10.0.0",
-    "socket.io": "^4.5.3",
-    "socket.io-client": "^4.5.3",
-    "tailwindcss": "^2.2.9"
-  }
+  "license": "ISC"
 }
